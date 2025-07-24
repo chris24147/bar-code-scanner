@@ -75,19 +75,24 @@ const startQRScanner = async () => {
 
     const qrReader = new BrowserQRCodeReader();
 
-    const intervalId = setInterval(async () => {
+    // Continuously scan until QR is detected
+    const scanLoop = async () => {
       try {
         const result = await qrReader.decodeFromVideoElement(videoElement);
         if (result) {
           setQRText(result.getText());
-          clearInterval(intervalId);
           stopCamera();
           setStep(2);
+          return;
         }
-      } catch (e) {
-        // No QR code found in this frame, keep scanning
+      } catch (err) {
+        // No QR detected; keep scanning
       }
-    }, 500); // Check every 500ms
+
+      requestAnimationFrame(scanLoop);
+    };
+
+    scanLoop();
   } catch (error) {
     alert("Failed to access camera: " + error.message);
     console.error("QR scanning failed:", error);
