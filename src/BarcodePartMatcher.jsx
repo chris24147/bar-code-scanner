@@ -22,25 +22,25 @@ export default function BarcodePartMatcher() {
     stopCamera();
   };
 
-  const getCameraStream = async () => {
+const getCameraStream = async () => {
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { exact: "environment" } }, // rear camera
+      audio: false
+    });
+  } catch (err) {
+    console.warn("Exact environment camera not available, using fallback");
     try {
       return await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: "environment" } },
+        video: { facingMode: "environment" },
         audio: false
       });
-    } catch (err) {
-      console.warn("Exact environment camera not available, using fallback");
-      try {
-        return await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-          audio: false
-        });
-      } catch (fallbackErr) {
-        console.error("Camera access failed entirely", fallbackErr);
-        throw fallbackErr;
-      }
+    } catch (fallbackErr) {
+      console.error("Camera access failed entirely", fallbackErr);
+      throw fallbackErr;
     }
-  };
+  }
+};
 
   const stopCamera = () => {
     const video = videoRef.current;
