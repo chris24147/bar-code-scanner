@@ -34,26 +34,18 @@ export default function BarcodePartMatcher() {
 
 const getCameraStream = async () => {
   try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoInput = devices.find(
-      (device) =>
-        device.kind === "videoinput" &&
-        device.label.toLowerCase().includes("back")
-    );
-
-    const constraints = {
-      video: videoInput
-        ? { deviceId: { exact: videoInput.deviceId } }
-        : { facingMode: { ideal: "environment" } },
+    return await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { exact: "environment" } },
       audio: false,
-    };
-
-    return await navigator.mediaDevices.getUserMedia(constraints);
-  } catch (err) {
-    console.error("Camera error:", err);
-    return null;
+    });
+  } catch {
+    return await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" },
+      audio: false,
+    });
   }
 };
+
 
 
   const startQRScanner = async () => {
