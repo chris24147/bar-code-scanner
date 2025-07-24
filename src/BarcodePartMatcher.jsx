@@ -58,6 +58,9 @@ export default function BarcodePartMatcher() {
       const stream = await getCameraStream();
       videoElement.srcObject = stream;
       videoElement.setAttribute("playsinline", true);
+      videoElement.setAttribute("autoplay", true);
+      videoElement.setAttribute("muted", true);
+      videoElement.muted = true;
       await videoElement.play();
 
       const qrReader = new BrowserQRCodeReader();
@@ -86,6 +89,9 @@ export default function BarcodePartMatcher() {
       const stream = await getCameraStream();
       videoElement.srcObject = stream;
       videoElement.setAttribute("playsinline", true);
+      videoElement.setAttribute("autoplay", true);
+      videoElement.setAttribute("muted", true);
+      videoElement.muted = true;
       await videoElement.play();
 
       await new Promise(resolve => {
@@ -193,7 +199,7 @@ export default function BarcodePartMatcher() {
       {step === 3 && (
         <div className={`p-4 rounded ${resultClass}`}>
           <p className="text-lg font-semibold">Result: {result}</p>
-          {capturedImage && <img src={capturedImage} alt="Captured Part" className="w-full mt-2 border" />}
+          {capturedImage && <img src={capturedImage} alt="Captured Part" className="w-full mt-2 border" />}        
           <p className="text-sm text-gray-600 mt-2">QR Code: {qrText}</p>
           <p className="text-sm text-gray-600">Predicted Class: {predictedClass}</p>
           <button className="mt-4 px-4 py-2 bg-blue-600 text-white rounded" onClick={resetApp}>Reset</button>
@@ -202,3 +208,4 @@ export default function BarcodePartMatcher() {
     </div>
   );
 }
+
