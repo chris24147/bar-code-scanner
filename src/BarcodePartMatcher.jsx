@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { BrowserQRCodeReader } from "@zxing/library";
 import * as tmImage from "@teachablemachine/image";
@@ -14,7 +13,6 @@ export default function BarcodePartMatcher() {
   const modelRef = useRef(null);
 
   const resetApp = () => {
-    console.log("Resetting app");
     setStep(0);
     setQRText("");
     setPredictedClass("");
@@ -28,8 +26,7 @@ export default function BarcodePartMatcher() {
         video: { facingMode: { exact: "environment" } },
         audio: false,
       });
-    } catch (err) {
-      console.warn("Exact environment camera not available, using fallback");
+    } catch {
       return await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
         audio: false,
@@ -46,7 +43,6 @@ export default function BarcodePartMatcher() {
   };
 
   const startQRScanner = async () => {
-    console.log("Starting QR scanner");
     setStep(1);
     const videoElement = videoRef.current;
 
@@ -55,7 +51,6 @@ export default function BarcodePartMatcher() {
       const stream = await getCameraStream();
       videoElement.srcObject = stream;
 
-      // Safari requirements
       videoElement.setAttribute("playsinline", true);
       videoElement.setAttribute("autoplay", true);
       videoElement.setAttribute("muted", true);
@@ -64,21 +59,25 @@ export default function BarcodePartMatcher() {
       await videoElement.play();
 
       const qrReader = new BrowserQRCodeReader();
-      const result = await qrReader.decodeOnceFromVideoElement(videoElement);
-
-      if (result) {
-        console.log("QR Code Detected:", result.getText());
-        setQRText(result.getText());
-        stopCamera();
-        setStep(2);
-      }
+      const checkInterval = setInterval(async () => {
+        try {
+          const result = await qrReader.decodeOnceFromVideoElement(videoElement);
+          if (result) {
+            setQRText(result.getText());
+            clearInterval(checkInterval);
+            stopCamera();
+            setStep(2);
+          }
+        } catch (err) {
+          // Keep scanning
+        }
+      }, 1000);
     } catch (error) {
       console.error("QR scanning failed:", error);
     }
   };
 
   const startPartCamera = async () => {
-    console.log("Starting part camera");
     const videoElement = videoRef.current;
 
     try {
@@ -96,8 +95,6 @@ export default function BarcodePartMatcher() {
       await new Promise((resolve) => {
         videoElement.onloadedmetadata = () => resolve();
       });
-
-      console.log("Part camera ready");
     } catch (error) {
       console.error("Camera access for part photo failed:", error);
     }
@@ -108,10 +105,8 @@ export default function BarcodePartMatcher() {
       const URL = "/model";
       const modelURL = URL + "/model.json";
       const metadataURL = URL + "/metadata.json";
-      console.log("Loading model from:", modelURL, metadataURL);
       const model = await tmImage.load(modelURL, metadataURL);
       modelRef.current = model;
-      console.log("Model loaded successfully");
     } catch (error) {
       console.error("Model load failed:", error);
     }
@@ -121,10 +116,7 @@ export default function BarcodePartMatcher() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
-    if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
-      console.error("Video or canvas not ready");
-      return;
-    }
+    if (!video || !canvas || !video.videoWidth || !video.videoHeight) return;
 
     const context = canvas.getContext("2d");
     canvas.width = video.videoWidth;
@@ -140,15 +132,9 @@ export default function BarcodePartMatcher() {
 
     try {
       const prediction = await modelRef.current.predict(image);
-      console.log("Prediction result:", prediction);
       const top = prediction.sort((a, b) => b.probability - a.probability)[0];
       setPredictedClass(top.className);
-
-      if (top.className === qrText) {
-        setResult("Match");
-      } else {
-        setResult("Incorrect");
-      }
+      setResult(top.className === qrText ? "Match" : "Incorrect");
     } catch (error) {
       console.error("Prediction failed:", error);
     }
@@ -168,11 +154,7 @@ export default function BarcodePartMatcher() {
   }, [step]);
 
   const resultClass =
-    result === "Match"
-      ? "bg-green-200"
-      : result === "Incorrect"
-      ? "bg-red-200"
-      : "";
+    result === "Match" ? "bg-green-200" : result === "Incorrect" ? "bg-red-200" : "";
 
   return (
     <div className="p-6 max-w-md mx-auto">
@@ -234,9 +216,7 @@ export default function BarcodePartMatcher() {
             />
           )}
           <p className="text-sm text-gray-600 mt-2">QR Code: {qrText}</p>
-          <p className="text-sm text-gray-600">
-            Predicted Class: {predictedClass}
-          </p>
+          <p className="text-sm text-gray-600">Predicted Class: {predictedClass}</p>
           <button
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded"
             onClick={resetApp}
