@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { BrowserQRCodeReader } from "@zxing/library";
 import * as tmImage from "@teachablemachine/image";
@@ -11,7 +12,6 @@ export default function BarcodePartMatcher() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const modelRef = useRef(null);
-  const qrReaderRef = useRef(null);
 
   const resetApp = () => {
     console.log("Resetting app");
@@ -20,10 +20,6 @@ export default function BarcodePartMatcher() {
     setPredictedClass("");
     setResult("");
     setCapturedImage(null);
-    stopCamera();
-    if (qrReaderRef.current) {
-      qrReaderRef.current.reset();
-    }
   };
 
   const getCameraStream = async () => {
@@ -34,15 +30,10 @@ export default function BarcodePartMatcher() {
       });
     } catch (err) {
       console.warn("Exact environment camera not available, using fallback");
-      try {
-        return await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-          audio: false,
-        });
-      } catch (fallbackErr) {
-        console.error("Camera access failed entirely", fallbackErr);
-        throw fallbackErr;
-      }
+      return await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false,
+      });
     }
   };
 
@@ -61,31 +52,26 @@ export default function BarcodePartMatcher() {
 
     try {
       stopCamera();
-
       const stream = await getCameraStream();
       videoElement.srcObject = stream;
+
+      // Safari requirements
       videoElement.setAttribute("playsinline", true);
       videoElement.setAttribute("autoplay", true);
       videoElement.setAttribute("muted", true);
       videoElement.muted = true;
+
       await videoElement.play();
 
       const qrReader = new BrowserQRCodeReader();
-      qrReaderRef.current = qrReader;
+      const result = await qrReader.decodeOnceFromVideoElement(videoElement);
 
-      await qrReader.decodeFromVideoDevice(
-        undefined,
-        videoElement,
-        (result, err) => {
-          if (result) {
-            console.log("QR Code Detected:", result.getText());
-            setQRText(result.getText());
-            qrReader.reset();
-            stopCamera();
-            setStep(2);
-          }
-        }
-      );
+      if (result) {
+        console.log("QR Code Detected:", result.getText());
+        setQRText(result.getText());
+        stopCamera();
+        setStep(2);
+      }
     } catch (error) {
       console.error("QR scanning failed:", error);
     }
@@ -94,14 +80,17 @@ export default function BarcodePartMatcher() {
   const startPartCamera = async () => {
     console.log("Starting part camera");
     const videoElement = videoRef.current;
+
     try {
       stopCamera();
       const stream = await getCameraStream();
       videoElement.srcObject = stream;
+
       videoElement.setAttribute("playsinline", true);
       videoElement.setAttribute("autoplay", true);
       videoElement.setAttribute("muted", true);
       videoElement.muted = true;
+
       await videoElement.play();
 
       await new Promise((resolve) => {
@@ -204,7 +193,13 @@ export default function BarcodePartMatcher() {
       {step === 1 && (
         <div>
           <p className="mb-2">Step 1: Scan QR Code</p>
-          <video ref={videoRef} className="w-full h-auto border" />
+          <video
+            ref={videoRef}
+            className="w-full h-auto border"
+            autoPlay
+            playsInline
+            muted
+          />
         </div>
       )}
 
