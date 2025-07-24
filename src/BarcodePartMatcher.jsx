@@ -19,6 +19,7 @@ export default function BarcodePartMatcher() {
     setPredictedClass("");
     setResult("");
     setCapturedImage(null);
+    stopCamera();
   };
 
   const getCameraStream = async () => {
@@ -208,3 +209,4 @@ export default function BarcodePartMatcher() {
     </div>
   );
 }
+
