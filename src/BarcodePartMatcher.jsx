@@ -21,14 +21,30 @@ export default function BarcodePartMatcher() {
     setCapturedImage(null);
   };
 
+  const getCameraStream = async () => {
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: "environment" } }
+      });
+    } catch (err) {
+      console.warn("Exact environment camera not available, using fallback");
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" }
+        });
+      } catch (fallbackErr) {
+        console.error("Camera access failed entirely", fallbackErr);
+        throw fallbackErr;
+      }
+    }
+  };
+
   const startQRScanner = async () => {
     console.log("Starting QR scanner");
     setStep(1);
     const videoElement = videoRef.current;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: "environment" } }
-      });
+      const stream = await getCameraStream();
       videoElement.srcObject = stream;
       videoElement.setAttribute("playsinline", true);
       await videoElement.play();
@@ -55,9 +71,7 @@ export default function BarcodePartMatcher() {
     console.log("Starting part camera");
     const videoElement = videoRef.current;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: "environment" } }
-      });
+      const stream = await getCameraStream();
       videoElement.srcObject = stream;
       videoElement.setAttribute("playsinline", true);
       await videoElement.play();
