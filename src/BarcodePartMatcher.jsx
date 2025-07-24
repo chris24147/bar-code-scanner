@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { BrowserQRCodeReader } from "@zxing/library";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 import * as tmImage from "@teachablemachine/image";
 
 export default function BarcodePartMatcher() {
@@ -11,7 +11,6 @@ export default function BarcodePartMatcher() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const modelRef = useRef(null);
-  const qrReaderRef = useRef(null);
 
   const resetApp = () => {
     setStep(0);
@@ -19,10 +18,6 @@ export default function BarcodePartMatcher() {
     setPredictedClass("");
     setResult("");
     setCapturedImage(null);
-    if (qrReaderRef.current) {
-      qrReaderRef.current.reset();
-    }
-    stopCamera();
   };
 
   const getCameraStream = async () => {
@@ -30,8 +25,8 @@ export default function BarcodePartMatcher() {
       const constraints = {
         video: {
           facingMode: { exact: "environment" },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
         },
         audio: false,
       };
@@ -54,6 +49,7 @@ export default function BarcodePartMatcher() {
 
   const startQRScanner = async () => {
     setStep(1);
+
     await new Promise((resolve) => {
       const check = () => {
         if (videoRef.current) resolve();
@@ -76,27 +72,14 @@ export default function BarcodePartMatcher() {
 
       await videoElement.play();
 
-      const qrReader = new BrowserQRCodeReader();
-      qrReaderRef.current = qrReader;
-
-      const devices = await BrowserQRCodeReader.listVideoInputDevices();
-      const rearCamera =
-        devices.find((device) =>
-          device.label.toLowerCase().includes("back")
-        ) || devices[0];
-
-      qrReader.decodeFromVideoDevice(
-        rearCamera.deviceId,
-        videoElement,
-        (result, err) => {
-          if (result) {
-            setQRText(result.getText());
-            qrReader.reset();
-            stopCamera();
-            setStep(2);
-          }
+      const codeReader = new BrowserMultiFormatReader();
+      codeReader.decodeFromVideoElement(videoElement).then((result) => {
+        if (result) {
+          setQRText(result.getText());
+          stopCamera();
+          setStep(2);
         }
-      );
+      });
     } catch (error) {
       alert("Failed to access camera: " + error.message);
       console.error("QR scanning failed:", error);
@@ -204,7 +187,6 @@ export default function BarcodePartMatcher() {
           <video
             ref={videoRef}
             className="w-full h-auto border"
-            style={{ filter: "contrast(1.2) brightness(1.1)" }}
             autoPlay
             playsInline
             muted
@@ -255,3 +237,4 @@ export default function BarcodePartMatcher() {
     </div>
   );
 }
+
