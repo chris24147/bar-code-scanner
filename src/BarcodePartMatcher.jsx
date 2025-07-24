@@ -59,27 +59,36 @@ export default function BarcodePartMatcher() {
     });
 
     const videoElement = videoRef.current;
+    stopCamera();
 
     try {
-      stopCamera();
       const stream = await getCameraStream();
       videoElement.srcObject = stream;
-
       videoElement.setAttribute("playsinline", "true");
       videoElement.setAttribute("autoplay", "true");
       videoElement.setAttribute("muted", "true");
       videoElement.muted = true;
-
       await videoElement.play();
 
       const codeReader = new BrowserMultiFormatReader();
-      codeReader.decodeFromVideoElement(videoElement).then((result) => {
-        if (result) {
-          setQRText(result.getText());
-          stopCamera();
-          setStep(2);
+      let scanned = false;
+
+      const scanLoop = async () => {
+        if (scanned || !videoElement) return;
+        try {
+          const result = await codeReader.decodeOnceFromVideoElement(videoElement);
+          if (result) {
+            scanned = true;
+            setQRText(result.getText());
+            stopCamera();
+            setStep(2);
+          }
+        } catch (err) {
+          requestAnimationFrame(scanLoop); // keep retrying
         }
-      });
+      };
+
+      scanLoop();
     } catch (error) {
       alert("Failed to access camera: " + error.message);
       console.error("QR scanning failed:", error);
@@ -93,14 +102,12 @@ export default function BarcodePartMatcher() {
       stopCamera();
       const stream = await getCameraStream();
       videoElement.srcObject = stream;
-
       videoElement.setAttribute("playsinline", "true");
       videoElement.setAttribute("autoplay", "true");
       videoElement.setAttribute("muted", "true");
       videoElement.muted = true;
 
       await videoElement.play();
-
       await new Promise((resolve) => {
         videoElement.onloadedmetadata = () => resolve();
       });
@@ -237,4 +244,5 @@ export default function BarcodePartMatcher() {
     </div>
   );
 }
+
 
