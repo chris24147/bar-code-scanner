@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { BrowserQRCodeReader } from "@zxing/library";
 import * as tmImage from "@teachablemachine/image";
@@ -25,13 +24,15 @@ export default function BarcodePartMatcher() {
   const getCameraStream = async () => {
     try {
       return await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: "environment" } }
+        video: { facingMode: { exact: "environment" } },
+        audio: false
       });
     } catch (err) {
       console.warn("Exact environment camera not available, using fallback");
       try {
         return await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" }
+          video: { facingMode: "environment" },
+          audio: false
         });
       } catch (fallbackErr) {
         console.error("Camera access failed entirely", fallbackErr);
@@ -86,6 +87,7 @@ export default function BarcodePartMatcher() {
       videoElement.srcObject = stream;
       videoElement.setAttribute("playsinline", true);
       await videoElement.play();
+
       await new Promise(resolve => {
         videoElement.onloadedmetadata = () => resolve();
       });
@@ -113,8 +115,8 @@ export default function BarcodePartMatcher() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
-    if (!video.videoWidth || !video.videoHeight) {
-      console.error("Video not ready");
+    if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
+      console.error("Video or canvas not ready");
       return;
     }
 
@@ -182,7 +184,7 @@ export default function BarcodePartMatcher() {
       {step === 2 && (
         <div>
           <p className="mb-2">Step 2: Take a photo of the part</p>
-          <video ref={videoRef} className="w-full h-auto border mb-2" />
+          <video ref={videoRef} className="w-full h-auto border mb-2" autoPlay playsInline muted />
           <button className="px-4 py-2 bg-green-600 text-white rounded" onClick={capturePartImage}>Capture Part Photo</button>
           <canvas ref={canvasRef} className="hidden" />
         </div>
