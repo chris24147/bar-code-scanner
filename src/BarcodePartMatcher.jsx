@@ -21,24 +21,24 @@ export default function BarcodePartMatcher() {
     setCapturedImage(null);
   };
 
-  const getCameraStream = async () => {
-    try {
-      return await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: "environment" } },
-        audio: false
-      });
-    } catch (err) {
-      console.warn("Exact environment camera not available, using fallback");
-      try {
-        return await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-          audio: false
-        });
-      } catch (fallbackErr) {
-        console.error("Camera access failed entirely", fallbackErr);
-        throw fallbackErr;
+  const getRearCameraStream = async () => {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(device => device.kind === "videoinput");
+    const rearCamera = videoDevices.find(device => device.label.toLowerCase().includes("back"))
+      || videoDevices.find(device => device.label.toLowerCase().includes("environment"))
+      || videoDevices[videoDevices.length - 1];
+
+    const constraints = {
+      audio: false,
+      video: {
+        deviceId: rearCamera ? { exact: rearCamera.deviceId } : undefined,
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
       }
-    }
+    };
+
+    return await navigator.mediaDevices.getUserMedia(constraints);
   };
 
   const stopCamera = () => {
@@ -53,19 +53,16 @@ export default function BarcodePartMatcher() {
     console.log("Starting QR scanner");
     setStep(1);
     const videoElement = videoRef.current;
+
     try {
       stopCamera();
-      const stream = await getCameraStream();
+      const stream = await getRearCameraStream();
       videoElement.srcObject = stream;
-      videoElement.setAttribute("playsinline", true);
-      videoElement.setAttribute("autoplay", true);
-      videoElement.setAttribute("muted", true);
+      videoElement.setAttribute("playsinline", "true");
+      videoElement.setAttribute("autoplay", "true");
+      videoElement.setAttribute("muted", "true");
+      videoElement.setAttribute("controls", "false");
       videoElement.muted = true;
-
-      await new Promise(resolve => {
-        videoElement.onloadedmetadata = () => resolve();
-      });
-
       await videoElement.play();
 
       const qrReader = new BrowserQRCodeReader();
@@ -78,7 +75,7 @@ export default function BarcodePartMatcher() {
           stopCamera();
           setStep(2);
         } catch (e) {
-          // Keep trying
+          // keep scanning
         }
       }, 1000);
     } catch (error) {
@@ -89,20 +86,22 @@ export default function BarcodePartMatcher() {
   const startPartCamera = async () => {
     console.log("Starting part camera");
     const videoElement = videoRef.current;
+
     try {
       stopCamera();
-      const stream = await getCameraStream();
+      const stream = await getRearCameraStream();
       videoElement.srcObject = stream;
-      videoElement.setAttribute("playsinline", true);
-      videoElement.setAttribute("autoplay", true);
-      videoElement.setAttribute("muted", true);
+      videoElement.setAttribute("playsinline", "true");
+      videoElement.setAttribute("autoplay", "true");
+      videoElement.setAttribute("muted", "true");
+      videoElement.setAttribute("controls", "false");
       videoElement.muted = true;
+      await videoElement.play();
 
       await new Promise(resolve => {
         videoElement.onloadedmetadata = () => resolve();
       });
 
-      await videoElement.play();
       console.log("Part camera ready");
     } catch (error) {
       console.error("Camera access for part photo failed:", error);
@@ -173,7 +172,11 @@ export default function BarcodePartMatcher() {
     }
   }, [step]);
 
-  const resultClass = result === "Match" ? "bg-green-200" : result === "Incorrect" ? "bg-red-200" : "";
+  const resultClass = result === "Match"
+    ? "bg-green-200"
+    : result === "Incorrect"
+    ? "bg-red-200"
+    : "";
 
   return (
     <div className="p-6 max-w-md mx-auto">
