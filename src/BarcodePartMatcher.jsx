@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { BrowserQRCodeReader } from "@zxing/library";
 import * as tmImage from "@teachablemachine/image";
@@ -12,6 +11,7 @@ export default function BarcodePartMatcher() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const modelRef = useRef(null);
+  const qrReaderRef = useRef(null);
 
   const resetApp = () => {
     setStep(0);
@@ -19,6 +19,10 @@ export default function BarcodePartMatcher() {
     setPredictedClass("");
     setResult("");
     setCapturedImage(null);
+    if (qrReaderRef.current) {
+      qrReaderRef.current.reset();
+    }
+    stopCamera();
   };
 
   const getCameraStream = async () => {
@@ -26,8 +30,8 @@ export default function BarcodePartMatcher() {
       const constraints = {
         video: {
           facingMode: { exact: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
         },
         audio: false,
       };
@@ -48,57 +52,56 @@ export default function BarcodePartMatcher() {
     }
   };
 
-const startQRScanner = async () => {
-  setStep(1);
+  const startQRScanner = async () => {
+    setStep(1);
+    await new Promise((resolve) => {
+      const check = () => {
+        if (videoRef.current) resolve();
+        else setTimeout(check, 50);
+      };
+      check();
+    });
 
-  await new Promise((resolve) => {
-    const check = () => {
-      if (videoRef.current) resolve();
-      else setTimeout(check, 50);
-    };
-    check();
-  });
+    const videoElement = videoRef.current;
 
-  const videoElement = videoRef.current;
+    try {
+      stopCamera();
+      const stream = await getCameraStream();
+      videoElement.srcObject = stream;
 
-  try {
-    stopCamera();
-    const stream = await getCameraStream();
-    videoElement.srcObject = stream;
+      videoElement.setAttribute("playsinline", "true");
+      videoElement.setAttribute("autoplay", "true");
+      videoElement.setAttribute("muted", "true");
+      videoElement.muted = true;
 
-    videoElement.setAttribute("playsinline", "true");
-    videoElement.setAttribute("autoplay", "true");
-    videoElement.setAttribute("muted", "true");
-    videoElement.muted = true;
+      await videoElement.play();
 
-    await videoElement.play();
+      const qrReader = new BrowserQRCodeReader();
+      qrReaderRef.current = qrReader;
 
-    const qrReader = new BrowserQRCodeReader();
+      const devices = await BrowserQRCodeReader.listVideoInputDevices();
+      const rearCamera =
+        devices.find((device) =>
+          device.label.toLowerCase().includes("back")
+        ) || devices[0];
 
-    // Continuously scan until QR is detected
-    const scanLoop = async () => {
-      try {
-        const result = await qrReader.decodeFromVideoElement(videoElement);
-        if (result) {
-          setQRText(result.getText());
-          stopCamera();
-          setStep(2);
-          return;
+      qrReader.decodeFromVideoDevice(
+        rearCamera.deviceId,
+        videoElement,
+        (result, err) => {
+          if (result) {
+            setQRText(result.getText());
+            qrReader.reset();
+            stopCamera();
+            setStep(2);
+          }
         }
-      } catch (err) {
-        // No QR detected; keep scanning
-      }
-
-      requestAnimationFrame(scanLoop);
-    };
-
-    scanLoop();
-  } catch (error) {
-    alert("Failed to access camera: " + error.message);
-    console.error("QR scanning failed:", error);
-  }
-};
-
+      );
+    } catch (error) {
+      alert("Failed to access camera: " + error.message);
+      console.error("QR scanning failed:", error);
+    }
+  };
 
   const startPartCamera = async () => {
     const videoElement = videoRef.current;
@@ -201,6 +204,7 @@ const startQRScanner = async () => {
           <video
             ref={videoRef}
             className="w-full h-auto border"
+            style={{ filter: "contrast(1.2) brightness(1.1)" }}
             autoPlay
             playsInline
             muted
