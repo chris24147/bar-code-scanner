@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { BrowserQRCodeReader } from "@zxing/library";
 import * as tmImage from "@teachablemachine/image";
@@ -49,6 +50,15 @@ export default function BarcodePartMatcher() {
 
   const startQRScanner = async () => {
     setStep(1);
+
+    await new Promise((resolve) => {
+      const check = () => {
+        if (videoRef.current) resolve();
+        else setTimeout(check, 50);
+      };
+      check();
+    });
+
     const videoElement = videoRef.current;
 
     try {
