@@ -19,28 +19,27 @@ export default function BarcodePartMatcher() {
     setPredictedClass("");
     setResult("");
     setCapturedImage(null);
-    stopCamera();
   };
 
-const getCameraStream = async () => {
-  try {
-    return await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { exact: "environment" } }, // rear camera
-      audio: false
-    });
-  } catch (err) {
-    console.warn("Exact environment camera not available, using fallback");
+  const getCameraStream = async () => {
     try {
       return await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+        video: { facingMode: { exact: "environment" } },
         audio: false
       });
-    } catch (fallbackErr) {
-      console.error("Camera access failed entirely", fallbackErr);
-      throw fallbackErr;
+    } catch (err) {
+      console.warn("Exact environment camera not available, using fallback");
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false
+        });
+      } catch (fallbackErr) {
+        console.error("Camera access failed entirely", fallbackErr);
+        throw fallbackErr;
+      }
     }
-  }
-};
+  };
 
   const stopCamera = () => {
     const video = videoRef.current;
@@ -62,6 +61,11 @@ const getCameraStream = async () => {
       videoElement.setAttribute("autoplay", true);
       videoElement.setAttribute("muted", true);
       videoElement.muted = true;
+
+      await new Promise(resolve => {
+        videoElement.onloadedmetadata = () => resolve();
+      });
+
       await videoElement.play();
 
       const qrReader = new BrowserQRCodeReader();
@@ -74,7 +78,7 @@ const getCameraStream = async () => {
           stopCamera();
           setStep(2);
         } catch (e) {
-          // continue scanning
+          // Keep trying
         }
       }, 1000);
     } catch (error) {
@@ -93,11 +97,12 @@ const getCameraStream = async () => {
       videoElement.setAttribute("autoplay", true);
       videoElement.setAttribute("muted", true);
       videoElement.muted = true;
-      await videoElement.play();
 
       await new Promise(resolve => {
         videoElement.onloadedmetadata = () => resolve();
       });
+
+      await videoElement.play();
       console.log("Part camera ready");
     } catch (error) {
       console.error("Camera access for part photo failed:", error);
@@ -209,4 +214,3 @@ const getCameraStream = async () => {
     </div>
   );
 }
-
