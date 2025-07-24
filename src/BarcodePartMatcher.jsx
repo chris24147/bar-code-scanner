@@ -48,54 +48,52 @@ export default function BarcodePartMatcher() {
     }
   };
 
-  const startQRScanner = async () => {
-    setStep(1);
+const startQRScanner = async () => {
+  setStep(1);
 
-    await new Promise((resolve) => {
-      const check = () => {
-        if (videoRef.current) resolve();
-        else setTimeout(check, 50);
-      };
-      check();
-    });
+  await new Promise((resolve) => {
+    const check = () => {
+      if (videoRef.current) resolve();
+      else setTimeout(check, 50);
+    };
+    check();
+  });
 
-    const videoElement = videoRef.current;
+  const videoElement = videoRef.current;
 
-    try {
-      stopCamera();
-      const stream = await getCameraStream();
-      videoElement.srcObject = stream;
+  try {
+    stopCamera();
+    const stream = await getCameraStream();
+    videoElement.srcObject = stream;
 
-      videoElement.setAttribute("playsinline", "true");
-      videoElement.setAttribute("autoplay", "true");
-      videoElement.setAttribute("muted", "true");
-      videoElement.muted = true;
+    videoElement.setAttribute("playsinline", "true");
+    videoElement.setAttribute("autoplay", "true");
+    videoElement.setAttribute("muted", "true");
+    videoElement.muted = true;
 
-      await videoElement.play();
+    await videoElement.play();
 
-      const qrReader = new BrowserQRCodeReader();
+    const qrReader = new BrowserQRCodeReader();
 
-      const checkQR = async () => {
-        try {
-          const result = await qrReader.decodeOnceFromVideoElement(videoElement);
-          if (result) {
-            setQRText(result.getText());
-            stopCamera();
-            setStep(2);
-            return;
-          }
-        } catch (e) {
-          // Continue scanning
+    const intervalId = setInterval(async () => {
+      try {
+        const result = await qrReader.decodeFromVideoElement(videoElement);
+        if (result) {
+          setQRText(result.getText());
+          clearInterval(intervalId);
+          stopCamera();
+          setStep(2);
         }
-        requestAnimationFrame(checkQR);
-      };
+      } catch (e) {
+        // No QR code found in this frame, keep scanning
+      }
+    }, 500); // Check every 500ms
+  } catch (error) {
+    alert("Failed to access camera: " + error.message);
+    console.error("QR scanning failed:", error);
+  }
+};
 
-      requestAnimationFrame(checkQR);
-    } catch (error) {
-      alert("Failed to access camera: " + error.message);
-      console.error("QR scanning failed:", error);
-    }
-  };
 
   const startPartCamera = async () => {
     const videoElement = videoRef.current;
